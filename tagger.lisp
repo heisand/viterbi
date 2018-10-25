@@ -73,7 +73,7 @@
   
   hmm))
   
-  (defun train-hmm (hmm)
+(defun train-hmm (hmm)
   (loop for k being the hash-keys of (hmm-transitions hmm) using (hash-value v)
      do (setf (gethash k (hmm-transitions hmm)) (/ v (gethash (cadr k) (getf (hmm-states-observations hmm) :states)))))
   (loop for k being the hash-keys of (hmm-emissions hmm) using (hash-value v)
