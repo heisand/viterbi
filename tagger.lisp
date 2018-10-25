@@ -79,3 +79,7 @@
   (loop for k being the hash-keys of (hmm-emissions hmm) using (hash-value v)
      do (setf (gethash k (hmm-emissions hmm)) (/ v (gethash (cadr k) (getf (hmm-states-observations hmm) :states)))))
   hmm)
+
+(defun viterbi (hmm seq) 
+	
+	...
