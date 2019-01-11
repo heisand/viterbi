@@ -81,5 +81,46 @@
   hmm)
 
 (defun viterbi (hmm seq) 
-	
-	...
+  (let* ((n (length seq))
+	 (l (length (hmm-states hmm)))
+	 (max (coerce 0 'float))
+	 (maxlast 0)
+	 (path-prob (make-hash-table))
+	 (path-backpointer (make-hash-table)))
+
+	 (loop for i from 1 to (+ n 1)
+	    do (setf (gethash i path-prob) (make-hash-table))
+	    do (setf (gethash i path-backpointer) (make-hash-table)))
+	 
+	 (loop for s in (hmm-states hmm) 
+	    when (and (not (equal s "</s>")) (not (equal s "<s>")))
+	    do (progn (setf (gethash (state2id hmm s) (gethash 1 path-prob))
+			    (* (or (gethash (state2id hmm "<s>") (gethash (state2id hmm s) (hmm-transitions hmm))) 1/1000000)
+			       (or (gethash (state2id hmm s) (gethash (car seq) (hmm-emissions hmm))) 1/1000000)))
+		      (setf (gethash (state2id hmm s) (gethash 1 path-backpointer)) (state2id hmm "<s>"))))
+
+	 (loop for i from 2 to n
+	    do (loop for s in (hmm-states hmm) 
+		  do (setf max 0) 
+		  do (loop for k being the hash-keys of (gethash (- i 1) path-prob) using (hash-value v) 
+			do (when (and (not (eql k (state2id hmm "</s>"))) (not (equal s "</s>")) (not (equal s "<s>")))
+			     (when (> (* v (or (gethash k (gethash (state2id hmm s) (hmm-transitions hmm))) 1/1000000)
+					 (or (gethash (state2id hmm s) (gethash (nth (- i 1) seq) (hmm-emissions hmm))) 1/1000000)) max)
+			       (setf (gethash (state2id hmm s) (gethash i path-prob)) (setf max (* v (or (gethash k (gethash (state2id hmm s) (hmm-transitions hmm))) 1/1000000)
+												   (or (gethash (state2id hmm s) (gethash (nth (- i 1) seq) (hmm-emissions hmm))) 1/1000000))))
+			       (setf (gethash (state2id hmm s) (gethash i path-backpointer)) k))))))
+
+	 
+	 (loop for s in (hmm-states hmm)
+	      when (and (not (equal s "<s>")) (not (equal s "</s>")))
+
+	    do (when (> (* (gethash (state2id hmm s) (gethash n path-prob)) (or (gethash (state2id hmm s) (gethash (state2id hmm "</s>") (hmm-transitions hmm))) 1/1000000)) maxlast)
+		 (setf (gethash (state2id hmm "</s>") (gethash (+ n 1) path-prob))
+		       (setf maxlast (* (gethash (state2id hmm s) (gethash n path-prob)) (or (gethash (state2id hmm s) (gethash (state2id hmm "</s>") (hmm-transitions hmm))) 1/1000000))))
+		 (setf (gethash (state2id hmm "</s>") (gethash (+ n 1) path-backpointer)) (state2id hmm s))))
+
+	 (let* ((end (gethash (state2id hmm "</s>") (gethash (+ n 1) path-backpointer))))
+	   (reverse (append (list (gethash end (hmm-lab hmm)))
+		   (loop for i from n downto 2
+		      do (setf end (gethash end (gethash i path-backpointer)))
+		      collect (gethash end (hmm-lab hmm))))))))
